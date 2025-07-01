@@ -40,14 +40,20 @@ def fetch_and_alert():
     params = {
         "apiKey": ODDS_API_KEY,
         "regions": "eu",
-        "markets": "match_odds,totals,btts,corners",
+        "markets": "h2h,totals,btts",
         "oddsFormat": "decimal"
     }
 
     try:
         res = requests.get(url, params=params)
         data = res.json()
-        data = data[:40]  # stay within API quota
+        
+        # Handle API response properly
+        if isinstance(data, list):
+            data = data[:40]  # stay within API quota
+        else:
+            print("API response error:", data)
+            return
 
         for game in data:
             sport = game.get("sport_title", "")
@@ -103,11 +109,19 @@ def monitor_loop():
         fetch_and_alert()
         time.sleep(300)  # every 5 minutes
 
-threading.Thread(target=monitor_loop).start()
+def start_bot():
+    """Start the Telegram bot polling"""
+    print("Starting Telegram bot...")
+    bot.polling(none_stop=True, interval=1)
+
+# Start background threads
+threading.Thread(target=monitor_loop, daemon=True).start()
+threading.Thread(target=start_bot, daemon=True).start()
 
 @app.route('/')
 def home():
     return "✅ SportyBet Odds Bot is running."
 
 if __name__ == '__main__':
+    print("Starting Flask server and bot services...")
     app.run(host='0.0.0.0', port=8080)
